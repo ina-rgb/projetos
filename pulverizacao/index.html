@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Questionário – Aplicativo de Pulverização</title>
+<style>
+  :root{--verde:#2e7d32;--verde-claro:#e8f5e9;--borda:#c8e6c9;--texto:#1b1b1b;--cinza:#666}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:#f6f8f6;color:var(--texto);font-size:18px;line-height:1.4}
+  header{background:var(--verde);color:#fff;padding:22px 18px;text-align:center}
+  header h1{margin:0 0 6px;font-size:24px}
+  header p{margin:0;font-size:16px;opacity:.95}
+  main{max-width:640px;margin:0 auto;padding:16px}
+  .secao{font-size:15px;font-weight:700;letter-spacing:.5px;color:var(--verde);margin:26px 4px 8px;text-transform:uppercase}
+  .card{background:#fff;border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  .card h2{font-size:19px;margin:0 0 4px}
+  .dica{font-size:15px;color:var(--cinza);margin:0 0 12px}
+  .opcoes{display:flex;flex-direction:column;gap:10px}
+  .op{display:block;width:100%;text-align:left;padding:15px 16px;font-size:18px;border:2px solid var(--borda);background:#fff;border-radius:12px;cursor:pointer;color:var(--texto)}
+  .op.sel{background:var(--verde);border-color:var(--verde);color:#fff;font-weight:600}
+  .op.sel::before{content:"✓ "}
+  input[type=text],textarea{width:100%;font-size:18px;padding:14px;border:2px solid var(--borda);border-radius:12px;margin-top:10px;font-family:inherit}
+  textarea{min-height:90px}
+  .btn{display:block;width:100%;padding:18px;font-size:20px;font-weight:700;border:none;border-radius:14px;cursor:pointer;margin-top:12px;color:#fff;background:var(--verde)}
+  .btn.sec{background:#fff;color:var(--verde);border:2px solid var(--verde)}
+  .btn.gravando{background:#c62828;animation:pulsa 1.2s infinite}
+  .btn:disabled{opacity:.45}
+  @keyframes pulsa{50%{opacity:.75}}
+  .fotos{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .fotos img{width:90px;height:90px;object-fit:cover;border-radius:10px;border:2px solid var(--borda)}
+  audio{width:100%;margin-top:12px}
+  .status{font-size:16px;color:var(--verde);margin-top:8px;font-weight:600}
+  .final{background:var(--verde-claro);border:2px solid var(--verde)}
+  .passo{font-size:16px;color:var(--cinza);margin:14px 0 0}
+  .erro{color:#c62828;font-weight:600;font-size:16px;margin-top:8px}
+  footer{text-align:center;color:var(--cinza);font-size:14px;padding:20px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🚁 Seu aplicativo de pulverização</h1>
+  <p>Toque nas respostas. Leva uns 5 minutos.<br>No final, é só enviar pelo WhatsApp.</p>
+</header>
+
+<main>
+  <div class="card">
+    <h2>Seu nome</h2>
+    <input type="text" id="nome" placeholder="Digite seu nome">
+  </div>
+
+  <div id="perguntas"></div>
+
+  <div class="card final">
+    <h2>✅ Pronto! Agora envie</h2>
+    <p class="dica">São 2 envios rápidos para o WhatsApp da Ina.</p>
+    <button class="btn" id="enviarTexto">1️⃣ Enviar minhas respostas</button>
+    <p class="passo">Depois de enviar as respostas, volte para esta tela e toque no botão 2.</p>
+    <button class="btn sec" id="enviarArquivos">2️⃣ Enviar fotos e áudio</button>
+    <div id="msgEnvio"></div>
+  </div>
+</main>
+<footer>Obrigada! 😊</footer>
+
+<script>
+// ====== CONFIGURAÇÃO ======
+// Coloque aqui o WhatsApp da Ina com DDI e DDD, só números (ex.: "5547999999999").
+// Se ficar vazio, o WhatsApp abre para a pessoa escolher o contato.
+const WHATS_INA = "5547996141235";
+// ==========================
+
+const PERGUNTAS = [
+  {secao:"Sobre o seu trabalho"},
+  {id:1, t:"Você pulveriza:", ops:["Só na minha própria lavoura","Só para outros produtores (presto serviço)","As duas coisas"]},
+  {id:2, t:"Quais culturas mais pulveriza?", multi:true, dica:"Pode marcar várias.", ops:["Soja","Milho","Trigo / aveia","Fumo","Frutas / hortaliças","Pasto","Eucalipto / pinus","Outra"], outra:"Outra"},
+  {id:3, t:"Mais ou menos quantos hectares você pulveriza por mês na safra?", ops:["Até 100 ha","100 a 500 ha","500 a 2.000 ha","Mais de 2.000 ha"]},
+  {id:4, t:"Se presta serviço: quantos clientes você atende?", ops:["1 a 5","6 a 20","Mais de 20","Não presto serviço"]},
+  {secao:"Sobre seus equipamentos"},
+  {id:5, t:"📸 Fotos do drone", foto:true, dica:"Tire 1 foto do drone inteiro e 1 foto da etiqueta/plaqueta com o modelo (costuma ficar no corpo ou no braço do drone)."},
+  {id:6, t:"Quantos drones você tem?", ops:["1","2","3 ou mais"]},
+  {id:7, t:"Além do drone, tem outros equipamentos de pulverização?", multi:true, dica:"Pode marcar vários.", ops:["Pulverizador de barra puxado por trator","Pulverizador autopropelido (\"aranha\")","Pulverizador costal (nas costas)","Só o drone"]},
+  {id:8, t:"Quem pilota o drone?", ops:["Eu mesmo","Funcionário(s)","Eu e funcionários"]},
+  {id:9, t:"Você tem:", multi:true, dica:"Pode marcar vários.", ops:["Drone registrado na ANAC","Curso/certificado de piloto de drone agrícola","Cadastro no MAPA (Ministério da Agricultura)","Não sei / não tenho"]},
+  {secao:"Como é hoje"},
+  {id:10, t:"Hoje você anota as aplicações (data, área, produto, dose) onde?", ops:["Caderno / papel","WhatsApp","Planilha no computador","Em algum aplicativo","Não anoto"], outra:"Em algum aplicativo", outraLabel:"Qual aplicativo?"},
+  {id:11, t:"Você precisa entregar algum relatório da aplicação para o cliente, o agrônomo ou a fiscalização?", ops:["Sim, sempre","Às vezes","Não","Não sei"]},
+  {id:12, t:"Como você cobra pelo serviço?", ops:["Por hectare","Por hora","Por contrato / safra","Não cobro (é só na minha lavoura)"]},
+  {secao:"O que mais pesa"},
+  {id:13, t:"O que mais te dá dor de cabeça hoje?", multi:true, max:3, dica:"Escolha até 3.", ops:["Organizar a agenda de serviços","Lembrar o que apliquei, onde e quanto","Fazer relatório para cliente/agrônomo","Calcular calda, dose e quantos tanques/voos","Controlar o que os clientes me devem","Controlar baterias, manutenção e gasto do drone","Controle do clima (vento, chuva) na hora de aplicar","Outro"], outra:"Outro"},
+  {id:14, t:"🎤 Se você tivesse um aplicativo perfeito no celular, o que ele faria por você?", audio:true, dica:"Toque em GRAVAR e fale à vontade. Se preferir, pode escrever."},
+  {id:15, t:"Quem usaria o aplicativo?", ops:["Só eu","Eu e o piloto/funcionário","Eu, funcionários e meus clientes também"]}
+];
+
+const respostas = {};   // id -> array de opções
+const extras = {};      // id -> texto "outra"
+let fotos = [];         // File[]
+let audioArquivo = null;
+
+const area = document.getElementById("perguntas");
+
+PERGUNTAS.forEach(p => {
+  if (p.secao) {
+    const s = document.createElement("div"); s.className = "secao"; s.textContent = p.secao; area.appendChild(s); return;
+  }
+  const c = document.createElement("div"); c.className = "card";
+  c.innerHTML = `<h2>${p.id}. ${p.t}</h2>` + (p.dica ? `<p class="dica">${p.dica}</p>` : "");
+
+  if (p.ops) {
+    respostas[p.id] = [];
+    const box = document.createElement("div"); box.className = "opcoes";
+    let campoOutra = null;
+    if (p.outra) {
+      campoOutra = document.createElement("input");
+      campoOutra.type = "text"; campoOutra.placeholder = p.outraLabel || "Qual?"; campoOutra.style.display = "none";
+      campoOutra.addEventListener("input", () => extras[p.id] = campoOutra.value);
+    }
+    p.ops.forEach(op => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "op"; b.textContent = op;
+      b.addEventListener("click", () => {
+        let sel = respostas[p.id];
+        if (p.multi) {
+          if (sel.includes(op)) sel = sel.filter(x => x !== op);
+          else {
+            if (p.max && sel.length >= p.max) { alerta(c, `Escolha no máximo ${p.max}.`); return; }
+            sel = [...sel, op];
+          }
+        } else sel = [op];
+        respostas[p.id] = sel;
+        box.querySelectorAll(".op").forEach(x => x.classList.toggle("sel", sel.includes(x.textContent)));
+        if (campoOutra) campoOutra.style.display = sel.includes(p.outra) ? "block" : "none";
+      });
+      box.appendChild(b);
+    });
+    c.appendChild(box);
+    if (campoOutra) c.appendChild(campoOutra);
+  }
+
+  if (p.foto) {
+    const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.multiple = true; inp.style.display = "none";
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "📸 Tirar ou escolher fotos";
+    const prev = document.createElement("div"); prev.className = "fotos";
+    b.addEventListener("click", () => inp.click());
+    inp.addEventListener("change", () => {
+      fotos = fotos.concat(Array.from(inp.files));
+      prev.innerHTML = "";
+      fotos.forEach(f => { const i = document.createElement("img"); i.src = URL.createObjectURL(f); prev.appendChild(i); });
+      inp.value = "";
+    });
+    c.append(b, inp, prev);
+  }
+
+  if (p.audio) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "🎤 GRAVAR";
+    const st = document.createElement("div"); st.className = "status";
+    const player = document.createElement("audio"); player.controls = true; player.style.display = "none";
+    const txt = document.createElement("textarea"); txt.placeholder = "Ou escreva aqui (opcional)";
+    txt.addEventListener("input", () => extras[p.id] = txt.value);
+    let rec = null, partes = [], inicio = 0, timer = null;
+
+    b.addEventListener("click", async () => {
+      if (rec && rec.state === "recording") { rec.stop(); return; }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+        const tipo = ["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg"].find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
+        rec = tipo ? new MediaRecorder(stream, {mimeType:tipo}) : new MediaRecorder(stream);
+        partes = [];
+        rec.ondataavailable = e => e.data.size && partes.push(e.data);
+        rec.onstop = () => {
+          stream.getTracks().forEach(t => t.stop()); clearInterval(timer);
+          const mime = rec.mimeType || "audio/mp4";
+          const ext = mime.includes("mp4") ? "m4a" : mime.includes("ogg") ? "ogg" : "webm";
+          const blob = new Blob(partes, {type:mime});
+          audioArquivo = new File([blob], `resposta-14-audio.${ext}`, {type:mime});
+          player.src = URL.createObjectURL(blob); player.style.display = "block";
+          b.classList.remove("gravando"); b.textContent = "🎤 Gravar de novo";
+          st.textContent = "✓ Áudio gravado! Escute abaixo se quiser.";
+        };
+        rec.start(); inicio = Date.now();
+        b.classList.add("gravando"); b.textContent = "⏹️ PARAR";
+        timer = setInterval(() => { const s = Math.floor((Date.now()-inicio)/1000); st.textContent = `Gravando… ${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`; }, 500);
+      } catch (e) {
+        st.innerHTML = '<span class="erro">Não consegui usar o microfone. Permita o microfone ou escreva a resposta abaixo.</span>';
+      }
+    });
+    c.append(b, st, player, txt);
+  }
+  area.appendChild(c);
+});
+
+function alerta(card, msg){
+  let e = card.querySelector(".erro"); if (!e) { e = document.createElement("div"); e.className = "erro"; card.appendChild(e); }
+  e.textContent = msg; setTimeout(() => e.remove(), 2500);
+}
+
+function montarTexto(){
+  const nome = document.getElementById("nome").value.trim() || "(sem nome)";
+  let t = `*Questionário – App de Pulverização*\nNome: ${nome}\n`;
+  PERGUNTAS.forEach(p => {
+    if (p.secao) { t += `\n*${p.secao.toUpperCase()}*\n`; return; }
+    let r = "";
+    if (p.ops) {
+      r = (respostas[p.id] || []).map(o => (p.outra && o === p.outra && extras[p.id]) ? `${o}: ${extras[p.id]}` : o).join(", ") || "—";
+    } else if (p.foto) {
+      r = fotos.length ? `${fotos.length} foto(s) – envio no passo 2` : "sem fotos";
+    } else if (p.audio) {
+      r = (audioArquivo ? "áudio gravado – envio no passo 2" : "sem áudio") + (extras[p.id] ? `\nEscrito: ${extras[p.id]}` : "");
+    }
+    t += `${p.id}. ${p.t.replace(/^[^\wÀ-ú]+\s*/,"")}\n➡️ ${r}\n`;
+  });
+  return t;
+}
+
+const msg = document.getElementById("msgEnvio");
+
+document.getElementById("enviarTexto").addEventListener("click", () => {
+  const url = (WHATS_INA ? `https://wa.me/${WHATS_INA}` : "https://wa.me/") + "?text=" + encodeURIComponent(montarTexto());
+  window.open(url, "_blank");
+});
+
+document.getElementById("enviarArquivos").addEventListener("click", async () => {
+  const arquivos = [...fotos]; if (audioArquivo) arquivos.push(audioArquivo);
+  if (!arquivos.length) { msg.innerHTML = '<p class="erro">Você ainda não tirou fotos nem gravou áudio.</p>'; return; }
+  if (navigator.canShare && navigator.canShare({files:arquivos})) {
+    try { await navigator.share({files:arquivos, title:"Fotos e áudio – App Pulverização"}); msg.innerHTML = '<p class="status">✓ Escolha o WhatsApp e a conversa da Ina.</p>'; }
+    catch(e) { /* pessoa cancelou */ }
+  } else {
+    // Celular sem compartilhamento: baixa os arquivos para enviar manualmente
+    arquivos.forEach(f => { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); });
+    msg.innerHTML = '<p class="erro">Seu celular não deixou enviar direto. Os arquivos foram salvos — anexe-os na conversa com a Ina pelo clipe 📎 do WhatsApp.</p>';
+  }
+});
+</script>
+</body>
+</html>
